@@ -137,18 +137,65 @@ namespace BurglaryPreUnityLoader
                     write_log();
                     if (FilePath.EndsWith(".dll"))
                     {
-                        Assembly assembly = Assembly.LoadFile(FilePath);
-                        foreach (Type t in assembly.GetTypes())
+                        try
                         {
-                            if (t.IsClass & t.BaseType.Equals(typeof(Addon)) & addons.Find(a => t.GetCustomAttribute<AddonData>().Name == a.GetType().GetCustomAttribute<AddonData>().Name) == null)
+                            Assembly assembly = Assembly.LoadFile(FilePath);
+                            foreach (Type t in assembly.GetTypes())
                             {
-                                nl();
-                                ct.WLColNL("found " + ((AddonData)t.GetCustomAttribute(typeof(AddonData))).Name,
-                                    ConsoleColor.DarkGray, writer);
-                                nl();
-                                write_log();
-                                addons.Add(t);
+                                ct.WLColNL("t " + (t.FullName), ConsoleColor.DarkGray, writer);
+                                ct.WLColNL("tbase " + (t.BaseType.FullName), ConsoleColor.DarkGray, writer);
+                                ct.WLColNL("tnull? " + (t==null), ConsoleColor.DarkGray, writer);
+                                ct.WLColNL("tdatnull? " + (t.GetCustomAttribute<AddonData>()== null), ConsoleColor.DarkGray, writer);
+                                if (t.IsClass & t.BaseType.Equals(typeof(Addon)))
+                                {
+                                    bool pass = true;
+                                    foreach(Type addon in addons)
+                                    {
+                                        try
+                                        {
+                                            if (t.GetCustomAttribute<AddonData>().Name == addon.GetCustomAttribute<AddonData>().Name)
+                                            {
+                                                ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+                                                ct.WLCol(t.GetCustomAttribute<AddonData>().Name + " conflicts with pre registered addon " + addon.GetCustomAttribute<AddonData>().Name,ConsoleColor.Red,writer);
+                                                ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+                                                pass = false;
+                                                break;
+                                            }
+                                        }
+                                        catch(Exception ex)
+                                        {
+                                            ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+                                            ct.WLColNL("Error checking for conflict.", ConsoleColor.Red, writer);
+                                            ct.WLColNL("---------------------", ConsoleColor.DarkRed, writer);
+                                            ct.WLColNL("RAW: " + ex.ToString(), ConsoleColor.Red, writer);
+                                            ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+                                        }
+                                    }
+                                    if(pass)//addons.FirstOrDefault(a => t.GetCustomAttribute<AddonData>().Name == a.GetType().GetCustomAttribute<AddonData>().Name) == null)
+                                    {
+                                        nl();
+                                        ct.WLColNL("found " + ((AddonData)t.GetCustomAttribute(typeof(AddonData))).Name,
+                                            ConsoleColor.DarkGray, writer);
+                                        nl();
+                                        write_log();
+                                        addons.Add(t);
+                                    }
+                                }
                             }
+                        }
+                        catch(Exception ex)
+                        {
+                            ct.WLColNL("Something went wrong when loading " + FilePath, ConsoleColor.DarkGray, writer);
+                            ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+                            ct.WLColNL("ERROR!", ConsoleColor.DarkRed, writer);
+                            ct.WLColNL("message: " + ex.Message, ConsoleColor.Red, writer);
+                            ct.WLColNL("stacktrace: " + ex.StackTrace, ConsoleColor.Red, writer);
+                            ct.WLColNL("datadict: " + ex.Data.ToString(), ConsoleColor.Red, writer);
+                            ct.WLColNL("targetsite: " + ex.TargetSite.Name, ConsoleColor.Red, writer);
+                            ct.WLColNL("---------------------", ConsoleColor.DarkRed, writer);
+                            ct.WLColNL("RAW: " + ex.ToString(), ConsoleColor.Red, writer);
+                            ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+                            write_log();
                         }
                     }
                 }
