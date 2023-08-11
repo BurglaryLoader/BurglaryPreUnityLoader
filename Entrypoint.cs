@@ -18,6 +18,8 @@ using ct = Burglary.cons.ConsoleUtils;
 using UnityEngine;
 using Burglary.Events;
 using System.Net;
+using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace BurglaryPreUnityLoader
 {
@@ -102,9 +104,56 @@ namespace BurglaryPreUnityLoader
                 ct.WLCol("Creating and setting property HarmonyInstance...", ConsoleColor.DarkBlue, writer);
                 write_log();
 
-                BurglaryMain.HarmonyInstance = new Harmony("Burglary");
 
+                Rewired.ReInput.InitializedEvent += new Action(() =>
+                {
+                    ct.WLColNL("{SYSDBG} rewired has initialized", ConsoleColor.Cyan, writer);
+                    try
+                    {
+                        BurglaryMain.HarmonyInstance.PatchAll(typeof(BurglaryMain).GetType().Assembly);
+                    }
+                    catch (Exception ex)
+                    {
+                        ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+                        ct.WLColNL("ERROR!", ConsoleColor.DarkRed, writer);
+                        ct.WLColNL("message: " + ex.Message, ConsoleColor.Red, writer);
+                        ct.WLColNL("stacktrace: " + ex.StackTrace, ConsoleColor.Red, writer);
+                        ct.WLColNL("datadict: " + ex.Data.ToString(), ConsoleColor.Red, writer);
+                        ct.WLColNL("targetsite: " + ex.TargetSite.Name, ConsoleColor.Red, writer);
+                        ct.WLColNL("---------------------", ConsoleColor.DarkRed, writer);
+                        ct.WLColNL("RAW: " + ex.ToString(), ConsoleColor.Red, writer);
+                        ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+                    }
+                    foreach (Addon a in BurglaryMain.Addons)
+                    {
+                        ct.WLColNL("{SYSDBG} found addon " + a.GetType().GetCustomAttribute<AddonData>().Name, ConsoleColor.DarkCyan, writer);
+                        try
+                        {
+                            BurglaryMain.HarmonyInstance.PatchAll(a.GetType().Assembly);
+                        }
+                        catch (Exception ex)
+                        {
+                            ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+                            ct.WLColNL("ERROR!", ConsoleColor.DarkRed, writer);
+                            ct.WLColNL("message: " + ex.Message, ConsoleColor.Red, writer);
+                            ct.WLColNL("stacktrace: " + ex.StackTrace, ConsoleColor.Red, writer);
+                            ct.WLColNL("datadict: " + ex.Data.ToString(), ConsoleColor.Red, writer);
+                            ct.WLColNL("targetsite: " + ex.TargetSite.Name, ConsoleColor.Red, writer);
+                            ct.WLColNL("---------------------", ConsoleColor.DarkRed, writer);
+                            ct.WLColNL("RAW: " + ex.ToString(), ConsoleColor.Red, writer);
+                            ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+                        }
+                    }
+                    ct.WLColNL("{SYSDBG} finished patching all addons in registry and main class. final count: " + BurglaryMain.HarmonyInstance.GetPatchedMethods().ToList().Count, ConsoleColor.Cyan, writer);
+                });
+
+                ct.WLColNL("Registering action to Rewired InitializedEvent... This should apply all patches to all addons in the registry.", ConsoleColor.Yellow, writer);
+
+
+                BurglaryMain.HarmonyInstance = new Harmony("Burglary");
                 ct.WLColNL("Warning! Harmony has been known to interfere with specific libraries used by The Break-In. Please patch with caution...", ConsoleColor.Yellow, writer);
+
+                write_log();
 
                 DirectoryInfo dir = new DirectoryInfo(Directory.GetCurrentDirectory());
 
@@ -130,7 +179,6 @@ namespace BurglaryPreUnityLoader
 
                 List<Type> addons = new List<Type>(); // so addons can be organized / stuff bnal lbal bla a
                                                       //(hard to get that through filenames lol)
-
                 foreach (string FilePath in filePaths)
                 {
                     ct.WLColNL(FilePath + " found in addons.", ConsoleColor.DarkGray, writer);
@@ -144,25 +192,25 @@ namespace BurglaryPreUnityLoader
                             {
                                 ct.WLColNL("t " + (t.FullName), ConsoleColor.DarkGray, writer);
                                 ct.WLColNL("tbase " + (t.BaseType.FullName), ConsoleColor.DarkGray, writer);
-                                ct.WLColNL("tnull? " + (t==null), ConsoleColor.DarkGray, writer);
-                                ct.WLColNL("tdatnull? " + (t.GetCustomAttribute<AddonData>()== null), ConsoleColor.DarkGray, writer);
+                                ct.WLColNL("tnull? " + (t == null), ConsoleColor.DarkGray, writer);
+                                ct.WLColNL("tdatnull? " + (t.GetCustomAttribute<AddonData>() == null), ConsoleColor.DarkGray, writer);
                                 if (t.IsClass & t.BaseType.Equals(typeof(Addon)))
                                 {
                                     bool pass = true;
-                                    foreach(Type addon in addons)
+                                    foreach (Type addon in addons)
                                     {
                                         try
                                         {
                                             if (t.GetCustomAttribute<AddonData>().Name == addon.GetCustomAttribute<AddonData>().Name)
                                             {
                                                 ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
-                                                ct.WLCol(t.GetCustomAttribute<AddonData>().Name + " conflicts with pre registered addon " + addon.GetCustomAttribute<AddonData>().Name,ConsoleColor.Red,writer);
+                                                ct.WLCol(t.GetCustomAttribute<AddonData>().Name + " conflicts with pre registered addon " + addon.GetCustomAttribute<AddonData>().Name, ConsoleColor.Red, writer);
                                                 ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
                                                 pass = false;
                                                 break;
                                             }
                                         }
-                                        catch(Exception ex)
+                                        catch (Exception ex)
                                         {
                                             ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
                                             ct.WLColNL("Error checking for conflict.", ConsoleColor.Red, writer);
@@ -171,7 +219,7 @@ namespace BurglaryPreUnityLoader
                                             ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
                                         }
                                     }
-                                    if(pass)//addons.FirstOrDefault(a => t.GetCustomAttribute<AddonData>().Name == a.GetType().GetCustomAttribute<AddonData>().Name) == null)
+                                    if (pass)//addons.FirstOrDefault(a => t.GetCustomAttribute<AddonData>().Name == a.GetType().GetCustomAttribute<AddonData>().Name) == null)
                                     {
                                         nl();
                                         ct.WLColNL("found " + ((AddonData)t.GetCustomAttribute(typeof(AddonData))).Name,
@@ -183,7 +231,7 @@ namespace BurglaryPreUnityLoader
                                 }
                             }
                         }
-                        catch(Exception ex)
+                        catch (Exception ex)
                         {
                             ct.WLColNL("Something went wrong when loading " + FilePath, ConsoleColor.DarkGray, writer);
                             ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
@@ -302,6 +350,7 @@ namespace BurglaryPreUnityLoader
                 FreeConsole();
                 writer.Dispose();
             }
+
             ct.write_log();
             AppDomain.CurrentDomain.ProcessExit += (object sender, EventArgs e) => { write_log(); Utils.dispatcher.burgunload(); FreeConsole(); writer.Dispose(); };
         }
