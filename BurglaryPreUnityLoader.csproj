@@ -84,6 +84,7 @@
   <ItemGroup>
     <Compile Include="BurglaryMonoBehaviour.cs" />
     <Compile Include="Entrypoint.cs" />
+    <Compile Include="IsNETOperation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -25,7 +25,7 @@ namespace BurglaryPreUnityLoader
 {
     internal class Entrypoint
     {
-        public const string VERSION = "v1.0.0";
+        public const string VERSION = "v1.2.1";
 
         internal static void WLColNL(string text, ConsoleColor fg)
         {
@@ -66,17 +66,21 @@ namespace BurglaryPreUnityLoader
         {
             string log_location = Directory.GetCurrentDirectory() + "\\Burglary\\logs\\" + string.Format("{0:yyyyMMdd_HHmmss_fff}_Burglary.log", DateTime.Now);
             string logs_dir = Directory.GetCurrentDirectory() + "\\Burglary\\logs";
+            string deps_dir = Directory.GetCurrentDirectory() + "\\Burglary\\dependencies";
 
             try
             {
                 if (!Directory.Exists(logs_dir))
                     Directory.CreateDirectory(logs_dir);
+                if (!Directory.Exists(deps_dir))
+                    Directory.CreateDirectory(deps_dir);
 
                 AllocConsole();
 
                 ct.WLColNL(ct.motd_header, ConsoleColor.Blue, writer);
 
                 ct.WLColNL("Version \"" + VERSION + "\"", ConsoleColor.Green, writer);
+
                 //using (WebClient c = new WebClient())
                 //{
                 //doing wc stuff breaks it??? weird..
@@ -101,13 +105,53 @@ namespace BurglaryPreUnityLoader
                     Console.Out
                 });
 
+                // dependencies
+
+                ct.WLColNL("Loading all .NET assemblies in /dependencies...", ConsoleColor.Gray, writer);
+
+                FileInfo[] filesToLoad = new DirectoryInfo(deps_dir).GetFiles();
+
+                ct.WCol("Raw file count: ", ConsoleColor.Gray, writer);
+                ct.WCol(filesToLoad.Length.ToString(), ConsoleColor.DarkGreen, writer);
+                ct.WLColNL(".", ConsoleColor.Gray, writer);
+
+                int validPaths = 0;
+
+                foreach (FileInfo fi in filesToLoad)
+                {
+                    try
+                    {
+                        Assembly.LoadFrom(deps_dir + "\\" + fi.Name);
+                        ct.WLColNL("\\Burglary\\dependencies\\" + fi.Name + " was loaded successfully.", ConsoleColor.Green, writer);
+                        validPaths++;// ("\\Burglary\\dependencies\\" + fi.Name);
+                    }
+                    catch(Exception ex)
+                    {
+                        ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+                        ct.WLColNL("ERROR! (base!)", ConsoleColor.DarkRed, writer);
+                        ct.WLColNL("message: " + ex.Message, ConsoleColor.Red, writer);
+                        ct.WLColNL("stacktrace: " + ex.StackTrace, ConsoleColor.Red, writer);
+                        ct.WLColNL("---------------------", ConsoleColor.DarkRed, writer);
+                        ct.WLColNL("RAW: " + ex.ToString(), ConsoleColor.Red, writer);
+                        ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
+
+                        ct.WLColNL("\\Burglary\\dependencies\\" + fi.Name + " was not a valid .NET assembly or something else went wrong. Make sure the DLL is a .NET dll and is x64", ConsoleColor.Red, writer);
+                    }
+                }
+
+                ct.WCol("Valid output count: ", ConsoleColor.Gray, writer);
+                ct.WCol(validPaths.ToString(), ConsoleColor.Green, writer);
+                ct.WLColNL(".", ConsoleColor.Gray, writer);
+
+                //harmony
+
                 ct.WLCol("Creating and setting property HarmonyInstance...", ConsoleColor.DarkBlue, writer);
                 write_log();
 
 
                 Rewired.ReInput.InitializedEvent += new Action(() =>
                 {
-                    ct.WLColNL("{SYSDBG} rewired has initialized", ConsoleColor.Cyan, writer);
+                    ct.WLColNL("Rewired has initialized. Patching!", ConsoleColor.DarkYellow, writer);
                     try
                     {
                         BurglaryMain.HarmonyInstance.PatchAll(typeof(BurglaryMain).GetType().Assembly);
@@ -115,7 +159,7 @@ namespace BurglaryPreUnityLoader
                     catch (Exception ex)
                     {
                         ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
-                        ct.WLColNL("ERROR!", ConsoleColor.DarkRed, writer);
+                        ct.WLColNL("ERROR! (base!)", ConsoleColor.DarkRed, writer);
                         ct.WLColNL("message: " + ex.Message, ConsoleColor.Red, writer);
                         ct.WLColNL("stacktrace: " + ex.StackTrace, ConsoleColor.Red, writer);
                         ct.WLColNL("datadict: " + ex.Data.ToString(), ConsoleColor.Red, writer);
@@ -126,7 +170,7 @@ namespace BurglaryPreUnityLoader
                     }
                     foreach (Addon a in BurglaryMain.Addons)
                     {
-                        ct.WLColNL("{SYSDBG} found addon " + a.GetType().GetCustomAttribute<AddonData>().Name, ConsoleColor.DarkCyan, writer);
+                        ct.WLColNL("Patching all in addon " + a.GetType().GetCustomAttribute<AddonData>().Name, ConsoleColor.Yellow, writer);
                         try
                         {
                             BurglaryMain.HarmonyInstance.PatchAll(a.GetType().Assembly);
@@ -144,7 +188,7 @@ namespace BurglaryPreUnityLoader
                             ct.WLColNL("=====================", ConsoleColor.DarkRed, writer);
                         }
                     }
-                    ct.WLColNL("{SYSDBG} finished patching all addons in registry and main class. final count: " + BurglaryMain.HarmonyInstance.GetPatchedMethods().ToList().Count, ConsoleColor.Cyan, writer);
+                    ct.WLColNL("Finished patching all addons in registry and main class. Final patch count: " + BurglaryMain.HarmonyInstance.GetPatchedMethods().ToList().Count, ConsoleColor.Cyan, writer);
                 });
 
                 ct.WLColNL("Registering action to Rewired InitializedEvent... This should apply all patches to all addons in the registry.", ConsoleColor.Yellow, writer);
@@ -190,10 +234,10 @@ namespace BurglaryPreUnityLoader
                             Assembly assembly = Assembly.LoadFile(FilePath);
                             foreach (Type t in assembly.GetTypes())
                             {
-                                ct.WLColNL("t " + (t.FullName), ConsoleColor.DarkGray, writer);
-                                ct.WLColNL("tbase " + (t.BaseType.FullName), ConsoleColor.DarkGray, writer);
-                                ct.WLColNL("tnull? " + (t == null), ConsoleColor.DarkGray, writer);
-                                ct.WLColNL("tdatnull? " + (t.GetCustomAttribute<AddonData>() == null), ConsoleColor.DarkGray, writer);
+                                //ct.WLColNL("t " + (t.FullName), ConsoleColor.DarkGray, writer);
+                                //ct.WLColNL("tbase " + (t.BaseType.FullName), ConsoleColor.DarkGray, writer);
+                                //ct.WLColNL("tnull? " + (t == null), ConsoleColor.DarkGray, writer);
+                                //ct.WLColNL("tdatnull? " + (t.GetCustomAttribute<AddonData>() == null), ConsoleColor.DarkGray, writer);
                                 if (t.IsClass & t.BaseType.Equals(typeof(Addon)))
                                 {
                                     bool pass = true;
@@ -312,8 +356,7 @@ namespace BurglaryPreUnityLoader
 
                 SceneManager.sceneLoaded += new UnityAction<Scene, LoadSceneMode>((Scene, LoadSceneMode) =>
                 {
-                    GameObject burglary = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                    burglary.name = "BurglaryRequired";
+                    GameObject burglary = new GameObject("BurglaryRequired");
                     burglary.transform.position = new Vector3(99999, 99999, 9999);
                     burglary.AddComponent<BurglaryMonoBehaviour>();
                     Burglary.Events.Utils.dispatcher.sceneload(Scene);
